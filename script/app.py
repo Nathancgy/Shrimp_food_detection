@@ -97,7 +97,7 @@ def DataVisualize(corners_count, frame_rate):
     return
 
 # Fetch the video file
-cap = cv2.VideoCapture('testvideo3.mp4')
+cap = cv2.VideoCapture('videos/testvideo3.mp4')
 frame_rate = cap.get(cv2.CAP_PROP_FPS)
 print(frame_rate)
 corners_count = []
