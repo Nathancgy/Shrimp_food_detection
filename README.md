@@ -5,12 +5,21 @@ The *shrimp_food_detection* project aims to optimize feeding practices in shrimp
 
 ## Features
 - **Food Detection**: Utilizes the Harris corner detection algorithm enhanced with non-maximum suppression to identify potential leftover food particles.
-![alt text](https://github.com/Nathancgy/Shrimp_food_detection/blob/img/curve.png?raw=true)
+
+<img src = 'https://github.com/Nathancgy/Shrimp_food_detection/blob/main/img/curve.png?raw=true' width = '600'>
+
 - **Shrimp Detection**: Employs a CNN model, specifically the ResNet architecture, to detect the presence of shrimp within the pond environment.
-![alt text](https://github.com/Nathancgy/Shrimp_food_detection/blob/img/detection.png?raw=true)
+
+<img src = 'https://github.com/Nathancgy/Shrimp_food_detection/blob/main/img/detect.png?raw=true' width = '600'>
+
 - **Real-time Visualization**: Offers real-time graphs to visualize the quantity of leftover food and shrimp activity, aiding in the optimization of feeding schedules.
+
+<img src = 'https://github.com/Nathancgy/Shrimp_food_detection/blob/main/img/realtime.png?raw=true' width = '600'>
+
 - **Pond Detection**: Employs a 3 layer encoder and a 1 layer decoder CNN model to detect the pond, accurate against different shapes.
-![alt text](https://github.com/Nathancgy/Shrimp_food_detection/blob/img/shrimp.png?raw=true)
+  
+<img src = 'https://github.com/Nathancgy/Shrimp_food_detection/blob/main/img/pond.png?raw=true' width = '600'>
+
 ## Installation
 
 To set up the *shrimp_food_detection* project, follow these steps:
