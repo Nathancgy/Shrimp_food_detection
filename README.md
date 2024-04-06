@@ -5,10 +5,12 @@ The *shrimp_food_detection* project aims to optimize feeding practices in shrimp
 
 ## Features
 - **Food Detection**: Utilizes the Harris corner detection algorithm enhanced with non-maximum suppression to identify potential leftover food particles.
+![alt text](https://github.com/Nathancgy/Shrimp_food_detection/blob/img/curve.png?raw=true)
 - **Shrimp Detection**: Employs a CNN model, specifically the ResNet architecture, to detect the presence of shrimp within the pond environment.
+![alt text](https://github.com/Nathancgy/Shrimp_food_detection/blob/img/detection.png?raw=true)
 - **Real-time Visualization**: Offers real-time graphs to visualize the quantity of leftover food and shrimp activity, aiding in the optimization of feeding schedules.
 - **Pond Detection**: Employs a 3 layer encoder and a 1 layer decoder CNN model to detect the pond, accurate against different shapes.
-
+![alt text](https://github.com/Nathancgy/Shrimp_food_detection/blob/img/shrimp.png?raw=true)
 ## Installation
 
 To set up the *shrimp_food_detection* project, follow these steps:
