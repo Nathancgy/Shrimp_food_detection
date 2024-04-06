@@ -108,7 +108,7 @@ num_ftrs = model_ft.fc.in_features
 model_ft.fc = nn.Linear(num_ftrs, 2)
 
 # Load the saved model state dictionary
-model_ft.load_state_dict(torch.load('model_state_dict.pth'))
+model_ft.load_state_dict(torch.load('model_state/model_state_dict.pth'))
 model_ft.eval()
 
 data_transforms = transforms.Compose([

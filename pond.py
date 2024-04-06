@@ -61,7 +61,7 @@ transform = transforms.Compose([
 image_path = 'imageset/pond_before/test4.png'
 
 model = CNN() 
-model.load_state_dict(torch.load('segmentation_model.pth'))
+model.load_state_dict(torch.load('model_state/segmentation_model.pth'))
 
 image_batch = process_image(image_path)
 predicted_mask = predict_mask(model, image_batch)
