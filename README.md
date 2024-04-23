@@ -1,7 +1,7 @@
 # Shrimp Food Detection
 
 ## Overview
-The *shrimp_food_detection* project aims to optimize feeding practices in shrimp farming by automating the detection and visualization of leftover food in shrimp ponds using advanced computer vision techniques. Additionally, it incorporates a Convolutional Neural Network (CNN) model to detect the presence of shrimp, enabling shrimp farmers to adjust feeding schedules more precisely and monitor shrimp activity effectively. This project presents a novel approach to enhancing sustainability and profitability in shrimp farming operations.
+The *shrimp_food_detection* project aims to help with feeding efficiency in shrimp farming by automating the detection and visualization of leftover food in shrimp ponds using advanced computer vision techniques. Additionally, it incorporates a Convolutional Neural Network (CNN) model to detect the presence of shrimp, enabling shrimp farmers to adjust feeding schedules more precisely and monitor shrimp activity effectively. This project presents a novel approach to enhancing sustainability and profitability in shrimp farming operations.
 
 ## Features
 - **Food Detection**: Utilizes the Harris corner detection algorithm enhanced with non-maximum suppression to identify potential leftover food particles.
