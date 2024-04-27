@@ -40,25 +40,19 @@ def predict_mask(model, image_batch):
         predicted_mask = prediction > 0.5
     return predicted_mask.squeeze().cpu().numpy()
 
-def highlight_circle(original_image, predicted_mask):
-    predicted_mask_resized = cv2.resize(
-        predicted_mask.astype(np.float32), 
-        (original_image.shape[1], original_image.shape[0])
-    )
-    _, mask_uint8 = cv2.threshold(predicted_mask_resized, 0.5, 255, cv2.THRESH_BINARY)
-    mask_uint8 = mask_uint8.astype(np.uint8)
-    contours, _ = cv2.findContours(mask_uint8, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    highlighted_image = original_image.copy()
-    cv2.drawContours(highlighted_image, contours, -1, (0, 255, 0), 3)
-    return highlighted_image
-
+def extract_pond(original_image, predicted_mask):
+    predicted_mask_resized = cv2.resize(predicted_mask.astype(np.float32), 
+                                        (original_image.shape[1], original_image.shape[0]))
+    mask_uint8 = (predicted_mask_resized > 0.5).astype(np.uint8) * 255
+    extracted_pond = cv2.bitwise_and(original_image, original_image, mask=mask_uint8)
+    return extracted_pond
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
-image_path = 'imageset/pond_before/4.png'
+image_path = 'imageset/pond_before/test2.png'
 
 model = CNN() 
 model.load_state_dict(torch.load('model_state/segmentation_model.pth'))
@@ -68,9 +62,8 @@ predicted_mask = predict_mask(model, image_batch)
 
 original_image = cv2.imread(image_path)
 original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
+extracted_pond = extract_pond(original_image, predicted_mask)
 
-highlighted_image = highlight_circle(original_image, predicted_mask)
-
-plt.imshow(highlighted_image)
+plt.imshow(extracted_pond)
 plt.axis('off')
 plt.show()
