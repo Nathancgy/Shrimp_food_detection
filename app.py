@@ -7,6 +7,7 @@ import torch.nn as nn
 import time
 from PIL import Image
 import matplotlib.pyplot as plt
+import warnings
 
 def non_maximum_suppression(image, scores, threshold, bound=10):
     """
@@ -115,7 +116,30 @@ def extract_pond(original_image, predicted_mask):
     extracted_pond = cv2.bitwise_and(original_image, original_image, mask=mask_uint8)
     return extracted_pond
 
-def crop_borders(image, border_size = 10):
+def mask_pond(cap):
+    pond_model = CNN()
+    pond_model.load_state_dict(torch.load('model_state/segmentation.pth'))
+    success, frame = cap.read()
+    if success:
+        pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)).convert('RGB')
+        image_batch = process_image(pil_image)
+        predicted_mask = predict_mask(pond_model, image_batch)
+        return extract_pond(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), predicted_mask)
+    else:
+        warnings.warn("Failed to read a frame from the video capture.")
+
+def fit_circle(pond_mask):
+    mask = pond_mask[:,:,0]
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    largest_contour = max(contours, key=cv2.contourArea)
+    (x, y), radius = cv2.minEnclosingCircle(largest_contour)
+    center = (int(x), int(y))
+    radius = int(radius)
+    circular_mask = np.zeros_like(mask)
+    cv2.circle(circular_mask, center, radius, color=255, thickness=cv2.FILLED)
+    return np.stack((circular_mask,)*3, axis=-1)
+
+def crop_borders(image, border_size = 5):
     height, width = image.shape[:2]
     cropped_image = image[border_size:height - border_size, border_size:width - border_size]
     return cropped_image
@@ -150,44 +174,24 @@ class CNN(Module):
 # Fetch the video file
 cap = cv2.VideoCapture('videos/testvideo3.mp4')
 frame_rate = cap.get(cv2.CAP_PROP_FPS)
-
-pond_model = CNN()
-pond_model.load_state_dict(torch.load('model_state/segmentation.pth'))
-success, frame = cap.read()
-if success:
-    pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)).convert('RGB')
-    image_batch = process_image(pil_image)
-    predicted_mask = predict_mask(pond_model, image_batch)
-    pond_mask = extract_pond(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), predicted_mask)
-
+pond_mask = mask_pond(cap)
 corners_count = []
 
 # ResNet18 model
 model_ft = models.resnet18(pretrained=True)
 num_ftrs = model_ft.fc.in_features
 model_ft.fc = nn.Linear(num_ftrs, 2)
-
-# Load the saved model state dictionary
 model_ft.load_state_dict(torch.load('model_state/model_state_dict.pth'))
 model_ft.eval()
 
-# Variables for tracking shrimp detections
+# Variables
 shrimp_detections = []
 detection_interval = 2
 last_detection_time = 0
-
 start_time = time.time()
 
 # Frame preprocess
-mask = pond_mask[:,:,0]
-contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-largest_contour = max(contours, key=cv2.contourArea)
-(x, y), radius = cv2.minEnclosingCircle(largest_contour)
-center = (int(x), int(y))
-radius = int(radius)
-circular_mask = np.zeros_like(mask)
-cv2.circle(circular_mask, center, radius, color=255, thickness=cv2.FILLED)
-pond_mask = np.stack((circular_mask,)*3, axis=-1)
+pond_mask = fit_circle(pond_mask)
 
 # Real time detection
 while True:
