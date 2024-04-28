@@ -1,12 +1,12 @@
 import cv2
 import numpy as np
 import torch
-from torchvision import models
+from torchvision import models, transforms
+from torch.nn import Module, Linear, Conv2d, ReLU, MaxPool2d, ConvTranspose2d, Sigmoid
 import torch.nn as nn
-import matplotlib.pyplot as plt
-from PIL import Image
 import time
-from torchvision import transforms
+from PIL import Image
+import matplotlib.pyplot as plt
 
 def non_maximum_suppression(image, scores, threshold, bound=10):
     """
@@ -96,10 +96,70 @@ def DataVisualize(corners_count, frame_rate):
     plt.show()
     return
 
+def process_image(image):
+    image_transformed = transform(image)
+    image_batch = image_transformed.unsqueeze(0)
+    return image_batch
+
+def predict_mask(model, image_batch):
+    model.eval()
+    with torch.no_grad():
+        prediction = model(image_batch)
+        predicted_mask = prediction > 0.5
+    return predicted_mask.squeeze().cpu().numpy()
+
+def extract_pond(original_image, predicted_mask):
+    predicted_mask_resized = cv2.resize(predicted_mask.astype(np.float32), 
+                                        (original_image.shape[1], original_image.shape[0]))
+    mask_uint8 = (predicted_mask_resized > 0.5).astype(np.uint8) * 255
+    extracted_pond = cv2.bitwise_and(original_image, original_image, mask=mask_uint8)
+    return extracted_pond
+
+def crop_borders(image, border_size = 10):
+    height, width = image.shape[:2]
+    cropped_image = image[border_size:height - border_size, border_size:width - border_size]
+    return cropped_image
+
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
+# Pond processing module
+class CNN(Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.encoder = nn.Sequential(
+            Conv2d(3, 32, kernel_size=5, padding=2),
+            ReLU(inplace=True),
+            Conv2d(32, 64, kernel_size=4, padding=2),
+            Conv2d(64, 128, kernel_size=3, padding=1),
+            MaxPool2d(kernel_size=2, stride=2)
+        )
+        self.decoder = nn.Sequential(
+            ConvTranspose2d(128, 1, kernel_size=2, stride=2),
+            Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
+    
 # Fetch the video file
 cap = cv2.VideoCapture('videos/testvideo3.mp4')
 frame_rate = cap.get(cv2.CAP_PROP_FPS)
-print(frame_rate)
+
+pond_model = CNN()
+pond_model.load_state_dict(torch.load('model_state/segmentation.pth'))
+success, frame = cap.read()
+if success:
+    pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)).convert('RGB')
+    image_batch = process_image(pil_image)
+    predicted_mask = predict_mask(pond_model, image_batch)
+    pond_mask = extract_pond(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), predicted_mask)
+
 corners_count = []
 
 # ResNet18 model
@@ -111,12 +171,6 @@ model_ft.fc = nn.Linear(num_ftrs, 2)
 model_ft.load_state_dict(torch.load('model_state/model_state_dict.pth'))
 model_ft.eval()
 
-data_transforms = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-])
-
 # Variables for tracking shrimp detections
 shrimp_detections = []
 detection_interval = 2
@@ -124,11 +178,25 @@ last_detection_time = 0
 
 start_time = time.time()
 
+# Frame preprocess
+mask = pond_mask[:,:,0]
+contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+largest_contour = max(contours, key=cv2.contourArea)
+(x, y), radius = cv2.minEnclosingCircle(largest_contour)
+center = (int(x), int(y))
+radius = int(radius)
+circular_mask = np.zeros_like(mask)
+cv2.circle(circular_mask, center, radius, color=255, thickness=cv2.FILLED)
+pond_mask = np.stack((circular_mask,)*3, axis=-1)
+
 # Real time detection
 while True:
     success, frame = cap.read()
     if not success:
         break
+
+    frame = crop_borders(cv2.bitwise_and(frame, pond_mask))
+
     operatedImage = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     operatedImage = np.float32(operatedImage)
     dest = cv2.cornerHarris(operatedImage, 3, 5, 0.08)
@@ -145,7 +213,7 @@ while True:
     current_time = time.time() - start_time
     if current_time - last_detection_time >= detection_interval:
         pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)).convert('RGB')
-        transformed_image = data_transforms(pil_image).unsqueeze(0)
+        transformed_image = transform(pil_image).unsqueeze(0)
 
         with torch.no_grad():
             outputs = model_ft(transformed_image)
@@ -155,7 +223,6 @@ while True:
         shrimp_detections.append((int(preds[0] == 1), current_time))
         
         last_detection_time = current_time
-
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
