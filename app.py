@@ -97,11 +97,13 @@ def DataVisualize(corners_count, frame_rate):
     plt.show()
     return
 
+# Prepare image batch for CNN processing.
 def process_image(image):
     image_transformed = transform(image)
     image_batch = image_transformed.unsqueeze(0)
     return image_batch
 
+# Predict mask from image batch using a model.
 def predict_mask(model, image_batch):
     model.eval()
     with torch.no_grad():
@@ -109,6 +111,7 @@ def predict_mask(model, image_batch):
         predicted_mask = prediction > 0.5
     return predicted_mask.squeeze().cpu().numpy()
 
+# Class for pond detection and processing.
 class Pond():
 
     def __init__(self, frame):
@@ -121,6 +124,7 @@ class Pond():
         extracted_pond = cv2.bitwise_and(original_image, original_image, mask=mask_uint8)
         return extracted_pond
 
+    # Apply the mask on the pond using a CNN model.
     def mask_pond(self):
         pond_model = CNN()
         pond_model.load_state_dict(torch.load('model_state/segmentation.pth'))
@@ -130,6 +134,8 @@ class Pond():
         self.frame = self.extract_pond(cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB), predicted_mask)
         return
 
+    # Fit a circular mask to the largest pond contour. 
+    # This will eliminate rough edges that will affect corner detection.
     def fit_circle(self):
         mask = self.frame[:,:,0]
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -144,6 +150,7 @@ class Pond():
     def __repr__(self):
         return "Extracted pond from the video using trained CNN"
 
+# Crop the borders of an image (e.g., 5 pixels away if border_size = 5).
 def crop_borders(image, border_size = 5):
     height, width = image.shape[:2]
     cropped_image = image[border_size:height - border_size, border_size:width - border_size]
