@@ -109,35 +109,40 @@ def predict_mask(model, image_batch):
         predicted_mask = prediction > 0.5
     return predicted_mask.squeeze().cpu().numpy()
 
-def extract_pond(original_image, predicted_mask):
-    predicted_mask_resized = cv2.resize(predicted_mask.astype(np.float32), 
-                                        (original_image.shape[1], original_image.shape[0]))
-    mask_uint8 = (predicted_mask_resized > 0.5).astype(np.uint8) * 255
-    extracted_pond = cv2.bitwise_and(original_image, original_image, mask=mask_uint8)
-    return extracted_pond
+class Pond():
 
-def mask_pond(cap):
-    pond_model = CNN()
-    pond_model.load_state_dict(torch.load('model_state/segmentation.pth'))
-    success, frame = cap.read()
-    if success:
-        pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)).convert('RGB')
+    def __init__(self, frame):
+        self.frame = frame
+    
+    def extract_pond(self, original_image, predicted_mask):
+        predicted_mask_resized = cv2.resize(predicted_mask.astype(np.float32), 
+                                            (original_image.shape[1], original_image.shape[0]))
+        mask_uint8 = (predicted_mask_resized > 0.5).astype(np.uint8) * 255
+        extracted_pond = cv2.bitwise_and(original_image, original_image, mask=mask_uint8)
+        return extracted_pond
+
+    def mask_pond(self):
+        pond_model = CNN()
+        pond_model.load_state_dict(torch.load('model_state/segmentation.pth'))
+        pil_image = Image.fromarray(cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)).convert('RGB')
         image_batch = process_image(pil_image)
         predicted_mask = predict_mask(pond_model, image_batch)
-        return extract_pond(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), predicted_mask)
-    else:
-        warnings.warn("Failed to read a frame from the video capture.")
+        self.frame = self.extract_pond(cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB), predicted_mask)
+        return
 
-def fit_circle(pond_mask):
-    mask = pond_mask[:,:,0]
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    largest_contour = max(contours, key=cv2.contourArea)
-    (x, y), radius = cv2.minEnclosingCircle(largest_contour)
-    center = (int(x), int(y))
-    radius = int(radius)
-    circular_mask = np.zeros_like(mask)
-    cv2.circle(circular_mask, center, radius, color=255, thickness=cv2.FILLED)
-    return np.stack((circular_mask,)*3, axis=-1)
+    def fit_circle(self):
+        mask = self.frame[:,:,0]
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        largest_contour = max(contours, key=cv2.contourArea)
+        (x, y), radius = cv2.minEnclosingCircle(largest_contour)
+        center = (int(x), int(y))
+        radius = int(radius)
+        circular_mask = np.zeros_like(mask)
+        cv2.circle(circular_mask, center, radius, color=255, thickness=cv2.FILLED)
+        self.frame = np.stack((circular_mask,)*3, axis=-1)
+
+    def __repr__(self):
+        return "Extracted pond from the video using trained CNN"
 
 def crop_borders(image, border_size = 5):
     height, width = image.shape[:2]
@@ -174,7 +179,7 @@ class CNN(Module):
 # Fetch the video file
 cap = cv2.VideoCapture('videos/testvideo3.mp4')
 frame_rate = cap.get(cv2.CAP_PROP_FPS)
-pond_mask = mask_pond(cap)
+success, frame = cap.read()
 corners_count = []
 
 # ResNet18 model
@@ -191,7 +196,9 @@ last_detection_time = 0
 start_time = time.time()
 
 # Frame preprocess
-pond_mask = fit_circle(pond_mask)
+pond = Pond(frame)
+pond.mask_pond()
+pond.fit_circle()
 
 # Real time detection
 while True:
@@ -199,7 +206,7 @@ while True:
     if not success:
         break
 
-    frame = crop_borders(cv2.bitwise_and(frame, pond_mask))
+    frame = crop_borders(cv2.bitwise_and(frame, pond.frame))
 
     operatedImage = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     operatedImage = np.float32(operatedImage)
@@ -233,5 +240,4 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
-
 DataVisualize(corners_count, frame_rate=frame_rate)
