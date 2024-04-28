@@ -1,3 +1,11 @@
 /.ipynb_checkpoints
 
-/.__pycache__
+/__pycache__
+
+/processed
+
+/uploads
+
+/templates
+
+web.py
