@@ -6,7 +6,7 @@ def process_video(input_path, output_path):
         print(f"Error: Cannot open video file {input_path}")
         return
     
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
     fps = cap.get(cv2.CAP_PROP_FPS)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -22,9 +22,7 @@ def process_video(input_path, output_path):
         ret, frame = cap.read()
         if not ret:
             break
-        if frame_count % 3 != 2:
-            out.write(frame)
-        
+        out.write(frame)
         frame_count += 1
     
     cap.release()
